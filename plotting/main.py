@@ -1,22 +1,25 @@
+# External Modules
 import matplotlib   # type: ignore
 matplotlib.use('Qt5Agg')
 from matplotlib.pyplot    import subplots,show   # type: ignore
+from os import environ
+from json import load
 
+# Internal Modules
 from dbplot.plotting.plots import *
 from dbplot.utils.db      import ConnectInfo
-################################################################################
-rdb = ConnectInfo(host   = 'g-suncat-suncatdata.sudb.stanford.edu'
-                 ,port   = 3306
-                 ,user   = 'gsuncatsuncatd'
-                 ,passwd = 'BCe8HzyXCA-ekD!!'
-                 ,db     = 'g_suncat_suncatdata')
 
-db = ConnectInfo()
+"""
+Plot a specific plot from dbplot.plotting.plots
+"""
+################################################################################
+with open(environ['DB_JSON'],'r') as f:
+    db = ConnectInfo(**load(f))
 
 def main()->None:
     print('Running Plots.py')
     f,ax = subplots(nrows=1,ncols=1)
-    errLattice.plot(ax,rdb)
+    bulkmod.plot(ax,db)
     show()
 
 if __name__=='__main__':

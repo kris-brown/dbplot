@@ -130,20 +130,10 @@ class Plot(object):
 
     @staticmethod
     def _set_legend(ax:'Axes')->None:
-        """ignore this...please"""
         handles, labels = ax.get_legend_handles_labels()
         by_label = OrderedDict(zip(labels, handles))
         ax.legend(by_label.values(), by_label.keys())
 
-        # try:
-        #     handles, labels = ax.get_legend_handles_labels()
-        #     hl = sorted(zip(handles, labels),key=itemgetter(1))
-        #     handles2, labels2 = zip(*hl)
-        #     ax.legend(handles2, labels2) #sort
-        #     by_label = OrderedDict(zip(ax.get_legend_handles_labels())) # type: ignore
-        #     legend = ax.legend(by_label.values(), by_label.keys()) # remove dups
-        #     legend.draggable()
-        # except (AttributeError,ValueError) as e: print(e)
 ################################################################################
 class LinePlot(Plot):
     def __init__(self

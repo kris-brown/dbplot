@@ -7,14 +7,18 @@ from matplotlib.pyplot    import subplots,show,figure   # type: ignore
 import dbplot.plotting.plots as plots
 from dbplot.utils.db      import ConnectInfo
 from dbplot.plotting.plot import Plot
-################################################################################
-rdb = ConnectInfo(host   = 'g-suncat-suncatdata.sudb.stanford.edu'
-                 ,port   = 3306
-                 ,user   = 'gsuncatsuncatd'
-                 ,passwd = 'BCe8HzyXCA-ekD!!'
-                 ,db     = 'g_suncat_suncatdata')
 
-db = ConnectInfo()
+"""
+Generates a matplotlib canvas that switches between the plots defined in
+dbplot.plotting.plots by pressing the LEFT and RIGHT arrow keys.
+
+Path to a json file with connection info must be in an environment variable
+"DB_JSON"
+"""
+################################################################################
+with open(environ['DB_JSON'],'r') as f:
+    db = ConnectInfo(**load(f))
+
 
 def dict_from_module(module:ModuleType)->List[Plot]:
     ps = []
@@ -46,14 +50,12 @@ def main()->None:
         curr_pos = curr_pos % len(ps)
 
         ax.cla()
-        ps[curr_pos].plot(ax,rdb)
+        ps[curr_pos].plot(ax,db)
         f.canvas.draw()
 
-
-    #fig = figure()
     f.canvas.mpl_connect('key_press_event', key_event)
     ax = f.add_subplot(111)
-    ps[curr_pos].plot(ax,rdb) # initialize plot
+    ps[curr_pos].plot(ax,db) # initialize plot
     show()
 
 if __name__=='__main__':
