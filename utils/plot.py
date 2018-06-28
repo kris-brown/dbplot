@@ -1,32 +1,40 @@
 # External modules
+from typing import List,Tuple,Optional,Callable
 import json
 import scipy.stats.mstats as mstatt   # type: ignore
 import numpy as np   # type: ignore
 
-# Internal modules
-import CataLog.datalog.db_utils as db
-from CataLog.misc.utilities   import normalize_list
-from CataLog.misc.print_parse import read_on_sher
-from CataLog.misc.atoms       import (nonmetals,get_keld_data,make_atoms
-                                     ,get_expt_surf_energy)
-
 ################################################################################
 """
 Auxillary functions useful for manipulating data for plotting
+
+
+TO DO: USE NUMPY.GRADIENT FOR DERIVATIVES?
+
+>>> x
+[1, 2, 5, 10, 11]
+>>> y
+[1, 8, 20, 40, 44]
+>>> y = [4,8,20,40,44]
+>>> gradient(y)/gradient(x)
+array([4., 4., 4., 4., 4.])
+
 """
 ######################
 # PostProcessing Funcs
 # --------------------
-def min2(xylns):
-    """DON'T include a line if it has only one point"""
+def min2(xylns:List[tuple])->List[tuple]:
+    """
+    DON'T include a line if it has only one point
+    """
     return [] if len(set([x[0] for x in xylns])) < 2 else xylns
 
-def min_y(xylns):
+def min_y(xylns:List[tuple])->List[tuple]:
     """
     keep the data point with the minimum y value
     We can't do this with a simple aggFunc (min) because we would lose label information
     """
-    output,xs  = [],[]
+    output,xs  = [],[] # type: List[tuple],List[float]
     for i in range(len(xylns)):
         x,y,l,n = xylns[i]
         if x not in xs:
@@ -37,23 +45,27 @@ def min_y(xylns):
 
     return output
 
-def absolute(xylns): return [(x,abs(y),l,n) for x,y,l,n in xylns]
+def absolute(xylns:List[tuple])->List[tuple]:
+    return [(x,abs(y),l,n) for x,y,l,n in xylns]
 
-def absdiff(xylns):
-    """Take the last y datapoint of a line to be 0, all previous y values replaced with distance to final ('converged') value"""
+def absdiff(xylns:List[tuple])->List[tuple]:
+    """
+    Take the last y datapoint of a line to be 0, all previous y values replaced with distance to final ('converged') value
+    """
     if len(set([x[0] for x in xylns])) < 2: return []
     xlist,ylist,llist,nlist =zip(*xylns)
-    return zip(xlist,[abs(y - ylist[-1]) for y in ylist],llist,nlist)
+    return list(zip(xlist,[abs(y - ylist[-1]) for y in ylist],llist,nlist))
 
-def derivabsdiff(xylns): return deriv(absdiff(xylns)) #derivative of the above 'absdiff' curve
+def derivabsdiff(xylns:List[tuple])->List[tuple]:
+    return deriv(absdiff(xylns)) #derivative of the above 'absdiff' curve
 
-def deriv(xylns):
+def deriv(xylns:List[tuple])->List[tuple]:
     if len(set([x[0] for x in xylns])) < 3: return []
     xlist,ylist,llist,nlist =zip(*xylns)
     dydx = dict(derivxy(xlist,ylist))
     return [(x,dydx[x],l,n) for x,y,l,n in xylns if x in dydx.keys()]
 
-def derivxy(x,y):
+def derivxy(x:List[float],y:List[float])->List[Tuple[float,float]]:
     """
     Converts x and y vectors (length N) to a pair of X and dYdX vectors (length N-2)
     Uses three-point finite difference estimate of derivative: http://www.m-hikari.com/ijma/ijma-password-2009/ijma-password17-20-2009/bhadauriaIJMA17-20-2009.pdf
@@ -66,123 +78,83 @@ def derivxy(x,y):
         sumH, diffH, prodH, quotH = h1+h2, h1-h2, h1*h2, h1/h2
         f0,     f1,     f2           = y[i-1], y[i], y[i+1]
         dydx.append(quotH/sumH*f2 - 1./(sumH*quotH)*f0 - diffH/(prodH)*f1)
-    return zip(x[1:-1],dydx)
+    return list(zip(x[1:-1],dydx))
 
 
 ##############################################
 # Groupby funcs (note input is always a tuple)
 #---------------------------------------------
-def num2metalstoich(numstr):
-    """
-    Use when groupbyCols = 'final.numbers'. Useful when grouping the hydrides of a metal
-    """
-    if numstr is None: return None
-    num = json.loads(numstr)
-    output =  tuple(normalize_list([n for n in num if n not in nonmetals]))
 
-    return output
 
-#########
-# X funcs
-#--------
-def mol_frac_per_nonmetal(symb):
-    """
-    Use when groupbyCols = 'numbers'.
-    """
-    import ase.data   # type: ignore
-    num = ase.data.chemical_symbols.index(symb)
-    def count(numstr):
-        if numstr is None: return None
-        nums = json.loads(numstr)
-        try:  return nums.count(num)/float(len([x for x in nums if x not in nonmetals]))
-        except ZeroDivisionError: return None
-    return count
+def timestamp2months(ts:int)->float:
+    return (ts / float((3600*24*30))) -581.7
 
-def timestamp2months(ts): return (ts / float((3600*24*30))) -581.7
 
-# #############################
-# Y Funcs :: (a,b,c,...)->Float
-# -----------------------------
 
-def parseBOA(key):
-    keyDict = {'cn':0,'q2':1,'q4':2,'q6':3}
-    index = keyDict[key]
-    def parse_boa(boajson):
-        if boajson is None: return None
-        return json.loads(boajson)[0][index]
-    return parse_boa
+def sumJson(x:str)->float:
+    return abs(sum(json.loads(x))) if x is not None else None
 
-def jobsSinceTimestamp(ts,user):
-    return db.sqlexecute('SELECT COUNT (timestamp) from job where user=\'%s\' and timestamp <= %d'%(user,ts))[0][0]
-
-def eFormPerMetalAtom(rhe=0):
-    def f(eForm,numstr):
-        if eForm is None: return None
+def err_lat_correction(uncorrected  : float
+                      ,sg           : int
+                      ,n            : int
+                      ,expt         : float
+                      ) -> float:
+    if sg == 194:
+        assert n == 2
+        multFactor = 1.0
+    elif  sg == 229:
+        if n == 1:
+            multFactor = 3.0**(0.5)/2
+        elif n == 2:
+            multFactor = 1
         else:
-            try:
-                nums = json.loads(numstr)
-                e  = eForm + rhe * nums.count(1)
-                return e/len([x for x in nums if x not in nonmetals])
-            except ZeroDivisionError: return None # diamond carbon
-    return f
-def sumJson(x): return abs(sum(json.loads(x))) if x is not None else None
-
-def errA(job_name,lattice_parameter,structure_ksb):
-    """Calculations done on primitive cells - need to convert to unit cell"""
-    if job_name is None or structure_ksb is None: return None
-
-    if    structure_ksb in ['hcp','hexagonal']:    multFactor = 1
-    elif  structure_ksb == 'bcc':                 multFactor = 3**(0.5)/2.
-    else:                                        multFactor = 2**(-0.5) #trigonal-shaped primitive cells
-
-    exptA = get_keld_data(job_name,'lattice parameter')
-    if exptA is None: return None
-
-    return lattice_parameter - exptA * multFactor
-
-def errBM(name,bm):
-    exptBM = get_keld_data(name,'bulk modulus')
-    return bm - exptBM
-
-def errSE(job_name,surface_energy):
-    if surface_energy is None or job_name is None: return None
-    e = get_expt_surf_energy(job_name)
-    if e is None: return None
-    return surface_energy - e #eV/A^2
-
-def bulkmodQuadfit(storage_directory):
-    try:              return json.loads(read_on_sher(storage_directory+'result.json'))['bfit']
-    except KeyError: pass
-
-def getSpacegroup(n,c,p):
-    import pymatgen.io.ase               as pmgase   # type: ignore
-    import pymatgen.symmetry.analyzer as psa   # type: ignore
-
-    pmg = pmgase.AseAtomsAdaptor().get_structure(make_atoms(n,c,p))
-    return psa.SpacegroupAnalyzer(pmg).get_space_group_number()
+            raise NotImplementedError('Unexpected n_atoms for bcc: ',n)
+    elif sg == 225:
+        if n == 1:
+            multFactor = 2**(-0.5) #trigonal-shaped primitive cells
+        elif n==4:
+            multFactor =1
+        else:
+            raise NotImplementedError('Unexpected n_atoms for fcc: ',n)
+    elif sg == 227:
+        if n == 2:
+            multFactor = 2**(-0.5) #trigonal-shaped primitive cells
+        elif n==8:
+            multFactor =1
+        else:
+            raise NotImplementedError('Unexpected n_atoms for diamond: ',n)
+    else:
+        raise NotImplementedError('UNEXPECTED SPACE GROUP %s'%sg)
+    return float(uncorrected) - float(expt) * multFactor
 
 
 # #########################################
 # Label / Legend Funcs :: (a,...) -> String
 # -----------------------------------------
 
-def name2element(name):
+def name2element(name:str)->str:
     if name in [None,'']: return 'X'
     return name.split('_')[0].split('-')[0] # 'Li-bcc_1,1,0_3x3x4' -> 'Li'
-def kptLowHigh(kptden): return 'kpt density '+('<' if kptden < 4 else '>')+r' 4 $\frac{Kpt}{\AA^{-1}}$'
-def wrapper(*tup): return '_'.join([str(x) for x in tup])
+def kptLowHigh(kptden:float)->str:
+    return 'kpt density '+('<' if kptden < 4 else '>')+r' 4 $\frac{Kpt}{\AA^{-1}}$'
+def wrapper(*tup:Tuple)->str:
+    return '_'.join([str(x) for x in tup])
 
 ##################################################
 # Bar Aggregating Function [(a,b,c,...)] -> Float
 #---------------------------------------------
-def avg(x):      return sum(x)/len(x)
-def absavg(x):   return sum(map(abs,x))/len(x)
-def RMS(xs):      return (avg([x**2 for x in xs]))**(0.5)
-def gMeanAbs(xs):
+def avg(x:list)->float:
+    return sum(x)/len(x)
+def absavg(x:list)->float:
+    return float(sum(map(abs,x)))/len(x)
+def RMS(xs:list)->float:
+    return (avg([x**2 for x in xs]))**(0.5)
+def gMeanAbs(xs:list)->float:
     preProcessed = [abs(x) for x in xs if x!=0]
     return mstatt.gmean(preProcessed)
 
-def variance(xs): raise NotImplementedError
+def variance(xs:list)->float:
+    raise NotImplementedError
 
 
 def converged(ycols,average=False):
