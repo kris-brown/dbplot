@@ -1,0 +1,9 @@
+{
+ "type" : "bar",
+ "query": "SELECT dftcode,xc,count(1) AS count FROM relax_job JOIN calc USING (calc_id) GROUP BY dftcode,xc",
+ "xcols": "count",
+ "gcols": "dftcode",
+ "spcols": "xc",
+ "title": "Distribution of DFT calculations",
+ "xlab" : "DFT code"
+}

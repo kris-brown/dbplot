@@ -1,0 +1,9 @@
+{
+ "type" : "hist",
+ "query": "SELECT pw FROM relax_job JOIN calc ON relax_job__calc = calc_id",
+ "xcols": "pw",
+ "gcols": "user",
+ "title": "Distribution of PW cutoffs over all jobs",
+ "xlab" : "PW cutoff, eV",
+ "bins" : 15
+}

@@ -1,0 +1,5 @@
+matplotlib
+pyqt5
+mysqlclient
+scipy
+numpy 

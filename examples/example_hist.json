@@ -1,0 +1,9 @@
+{
+  "type" : "hist",
+  "query": "SELECT timestamp,user from job ORDER BY RAND() LIMIT 1000",
+  "xcols": "timestamp",
+  "gcols": "user",
+  "title": "Trivial histogram",
+  "xlab" : "Timestamp",
+  "bins" : 100
+}

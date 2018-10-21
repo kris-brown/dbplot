@@ -1,0 +1,8 @@
+{
+  "type" : "bar",
+  "query": "SELECT COUNT(1) as count,user from job GROUP BY user",
+  "xcols": "count",
+  "gcols": "user",
+  "title": "Trivial bar",
+  "xlab" : "User"
+}

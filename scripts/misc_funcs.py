@@ -1,5 +1,5 @@
 # External modules
-from typing import List,Tuple,Optional,Callable
+from typing import List,Tuple,Optional as O,Callable as C
 import json
 import scipy.stats.mstats as mstatt   # type: ignore
 import numpy as np   # type: ignore
@@ -126,7 +126,7 @@ def err_lat_correction(uncorrected  : float
     else:
         raise NotImplementedError('UNEXPECTED SPACE GROUP %s'%sg)
 
-        
+
     return float(uncorrected) - float(expt) * multFactor
 
 
@@ -179,7 +179,7 @@ def variance(xs:list)->float:
     raise NotImplementedError
 
 
-def converged(ycols,average=False):
+def converged(ycols:str,average:bool=False)->C:
     xcol,ycol = ycols.split()
 
     derivConvDict={'pw':
@@ -188,7 +188,7 @@ def converged(ycols,average=False):
                     ,'error_lattice_A':    (0.001,300)}}
     dydxMax,xRange = derivConvDict[xcol][ycol]  # threshold for max |dy/dx| /// range (from last data point) over which |dy/dx| must be decreasing and beneath threshold
 
-    def convergenceFunc(xys):
+    def convergenceFunc(xys:list)->float:
 
         #Uses three-point finite difference estimate of derivative: http://www.m-hikari.com/ijma/ijma-password-2009/ijma-password17-20-2009/bhadauriaIJMA17-20-2009.pdf
         #Tests whether or not yFunc derivative has a low magnitude and is decreasing over a certain range
@@ -197,7 +197,7 @@ def converged(ycols,average=False):
         if average: xy = [(x,avg([yy for xx,yy in xys if x ==xx])) for x in sorted(dict(xys).keys())]
         if len(xy) < 5: print("\t\t\t\tNot enough data points"); return 0 # not converged
 
-        def dydxTest(xdydxlist):
+        def dydxTest(xdydxlist:list)->bool:
             for x,dydx in xdydxlist:
                 above = -dydxMax <= dydx
                 below = dydx <= dydxMax/10.     # allow *tiny* positive derivatives in case line is basically flat
