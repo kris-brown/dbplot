@@ -17,25 +17,23 @@ def flatten(lol : List[List[A]]) -> List[A]:
     """
     return [item for sublist in lol for item in sublist]
 
+def const(x:Any)->Any: return lambda : x
+def joiner(*args:Any)->str: return '_'.join(map(str,args))
 
 def mapfst(xs:List[tuple])->List[Any]:  return [x[0] for x in xs]
 def mapsnd(xs:List[tuple])->List[Any]:  return [x[1] for x in xs]
 def avg(x:list)->float:                 return sum(map(float,x))/len(x)
 
-def path_to_mod(pth:str)->Any:
+def path_to_funcs(pth : str) -> Dict[str,C]:
+    """
+    Assumes we have files with one sole function in them
+    """
     spec = spec_from_file_location('random',pth)
     if spec.loader is None:
         raise ValueError(pth)
     else:
         mod  = module_from_spec(spec)
         spec.loader.exec_module(mod)
-    return mod
-
-def path_to_funcs(pth : str) -> Dict[str,C]:
-    """
-    Assumes we have files with one sole function in them
-    """
-    mod = path_to_mod(pth)
 
     def check(o : C) -> bool:
         return isfunction(o) and getsourcefile(o)==pth
@@ -69,54 +67,38 @@ class FnArgs(object):
         - the function will be the identity function (Expecting one argument)
         - the args will be the argument names defined in the function.
     """
-    def __init__(self
-                ,func : C             = identity
-                ,args : O[List[str]]  = None
-                ) -> None:
-        if args is None:
-            spec = getfullargspec(func)
-            args = spec.args+spec.kwonlyargs
+    def __init__(self, func : U[str,C], args : U[str,List[str]]) -> None:
+        if isinstance(func,str): func = mkFunc(func)
+        if isinstance(args,str): args = args.split()
         self.func = func
         self.args = args
 
     def apply(self,d : dict)->Any:
-        args = [d.get(arg) for arg in self.args]
+        args = [d[arg] for arg in self.args]
         return self.func(*args)
 
-    @staticmethod
-    def fromFuncStr(f:O[Fn],a:O[str])->O['FnArgs']:
-        if f is None and a is None: return None
-        else:
-            args = args = (a or '').split() or None
-            return FnArgs(func=mkFunc(f),args = args)
-
-def Get(x : str) -> FnArgs:
-    return FnArgs(args=[x])
 ################################################################################
 class Group(object):
     """
-    Intermediate datatype useful for plotting. Just a labeled container.
+    Intermediate datatype useful for plotting.
+    Just a labeled container with a representative.
     """
-    def __init__(self,
-                 id         : int,
-                 label      : str,
-                 identifier : Any,
-                 elements   : List
-                ) -> None:
-        self.id         = id
-        self.label      = label
-        self.identifier = identifier
-        self.elements   = elements
+    def __init__(self,  id : int, label : str, rep : Any, elems : List) -> None:
+        self.id = id; self.label = label; self.rep = rep; self.elems = elems
 
     def __str__(self)->str:
-        return self.label+' (%d elements)'%len(self.elements)
+        return self.label+' (%d elements)'%len(self.elems)
 
     def __len__(self)->int:
-        return len(self.elements)
+        return len(self.elems)
 
     def apply(self,f:C)->None:
         """modify elements with a function"""
-        self.elements = f(self.elements)
+        self.elems = f(self.elems)
+
+    def map(self,f:C)->None:
+        """modify elements individually by mapping a function"""
+        self.elems = [f(e) for e in self.elems]
 
     def add_elem(self,x:Any)->None:
-        self.elements.append(x)
+        self.elems.append(x)

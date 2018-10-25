@@ -1,12 +1,18 @@
 {
   "type"   : "line",
+
   "query"  : "SELECT job_id,timestamp,user from job ORDER BY RAND() LIMIT 1000",
+
   "xcols"  : "job_id",
   "xfunc"  : "lambda x: x**2",
+
   "ycols"  : "timestamp",
+  
   "gcols"  : "user",
+
   "title"  : "Trivial lineplot",
   "xlab"   : "$(Job ID)^2$",
   "ylab"   : "Timestamp",
+
   "scatter": "True"
 }
