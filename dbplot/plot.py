@@ -6,95 +6,141 @@ from operator    import itemgetter
 from collections import OrderedDict
 from json        import load
 
+from plotly.graph_objs import Figure,Layout # type: ignore
+
 # Internal Modules
 from dbplot.db     import ConnectInfo as Conn,select_dict
-from dbplot.misc   import FnArgs,Group,mapfst,mapsnd,avg,const,identity,joiner
+from dbplot.misc   import FnArgs,Group,mapfst,mapsnd,avg,const,identity,joiner,mkFunc
 from dbplot.style  import mkStyle
 
-AX = Any
-
 #############################################################################
+
+
 class Plot(object):
-    def __init__(self,**kwargs:Any) -> None:
+    '''
+    High level representation of a plotly plot, requiring a DB connection
+    '''
+
+    #------------#
+    # Overloaded #
+    #------------#
+
+    def __init__(self, **kwargs : Any) -> None:
+        err = 'Unsupported keys: %s'
+        bad = set(kwargs) - self.kw
+        assert not bad, err % bad
         self.data = kwargs
 
-    @property
-    def kw(self)->Set[str]:
-        '''List of valid keyword arguments'''
-        return {'query','title','xlab','ylab','xcols','xfunc','lcols','lfunc','l'}
+    def __str__(self)->str:
+        return str(self.data)
 
-    def _init(self)->None:
+    __repr__ = __str__
+
+    def __getitem__(self, key : str) -> Any:
+        return self.data.get(key)
+
+    def __setitem__(self, key : str, item : Any) -> Any:
+        self.data[key] = item
+
+    def __contains__(self, item : str) -> bool:
+        return item in self.data
+
+    #---------------#
+    # 'Exposed API' #
+    #---------------#
+
+    def fig(self, conn : Conn, binds : list, funcs : dict) -> Figure:
+        '''Make a plotly figure'''
+        self._groups(conn,binds,funcs)
+        return Figure(data=self._data(),layout=self._layout())
+
+    #------------------#
+    # Abstract methods #
+    #------------------#
+
+    @abstractmethod
+    def _layout(self) -> dict:
+        return Layout(title = self['title'],
+                      xaxis = dict(title = self['xlab']),
+                      yaxis = dict(title = self['ylab']))
+
+    @abstractmethod
+    def _init(self, funcs : Dict[str,C]) -> None:
         '''Init called at plotting time - child classes have additional implementations'''
-        assert 'xcols' in self.data and 'query' in self.data
 
-        self.query = self.data['query']
-        self.title = self.data.get('title')
-        self.xlab  = self.data.get('xlab')
-        self.ylab  = self.data.get('ylab')
+        assert 'xcols' in self and 'query' in self
+
+        locals().update(funcs)
 
         # X func, handle defaults
-        if not 'xfunc' in self.data:
-            if isinstance(self.data['xcols'],str):
-                xcols = self.data['xcols'].split()
+        if not 'xfunc' in self:
+            if isinstance(self['xcols'],str):
+                xcols = self['xcols'].split()
             else:
-                xcols = self.data['xcols']
+                xcols = self['xcols']
             assert len(xcols) == 1
-            self.data['xfunc'] = identity
+            self['xfunc'] = identity
 
-        self.xFunc = FnArgs(self.data['xfunc'],self.data['xcols'])
+        self.xFunc = FnArgs(func = self['xfunc'], args = self['xcols'], funcs = funcs)
 
-        # Labeling of data points, handle defaults
-        if 'lcols' not in self.data:
-            self.lFunc = FnArgs(func=const(''),args=[])
-        elif 'lfunc' not in self.data:
-            self.lFunc = FnArgs(func=joiner,args=self.data['lcols'])
+        # Labeling of data points, handle defaults (meaningless for HIST)
+        if 'lcols' not in self:
+            self.lFunc = FnArgs(func=const(''),args=[], funcs = funcs)
+        elif 'lfunc' not in self:
+            self.lFunc = FnArgs(func=joiner,args=self['lcols'],funcs=funcs)
         else:
-            self.lFunc = FnArgs(self.data['lfunc'],self.data['lcols'])
+            self.lFunc = FnArgs(self['lfunc'],self['lcols'],funcs=funcs)
 
         # Grouping of data points
-        if 'gcols' not in self.data:
+        if 'gcols' not in self:
             # no way to group if no columns provided
-            self.gFunc  = FnArgs(func = const(1), args = [])
-            self.glFunc = FnArgs(func = const('') ,args = [])
+            self.gFunc  = FnArgs(func = const(1), args = [], funcs = funcs)
+            self.glFunc = FnArgs(func = const('') ,args = [], funcs = funcs)
         else:
-            gcols = self.data['gcols']
+            gcols = self['gcols']
 
-            if 'gfunc' not in self.data:
-                self.gFunc = FnArgs(func = joiner, args = gcols)
+            if 'gfunc' not in self:
+                self.gFunc = FnArgs(func = joiner, args = gcols, funcs = funcs)
             else:
-                self.gFunc = FnArgs(func = self.data['gfunc'], args = gcols)
+                self.gFunc = FnArgs(func = self['gfunc'], args = gcols, funcs = funcs)
 
-            glcols = self.data['glcols' if 'glcols' in self.data else 'gcols']
+            glcols = self['glcols' if 'glcols' in self else 'gcols']
 
-            if 'glfunc' not in self.data:
-                self.glFunc =  FnArgs(func = joiner, args = glcols)
+            if 'glfunc' not in self:
+                self.glFunc =  FnArgs(func = joiner, args = glcols, funcs = funcs)
             else:
-                self.glFunc = FnArgs(func = self.data['glfunc'], args = glcols)
+                self.glFunc = FnArgs(func = self['glfunc'], args = glcols, funcs = funcs)
 
 
-    def plot(self, ax : AX, conn : Conn, binds : list = []) -> None:
+    @abstractmethod
+    def _draw(self, g : Group) -> dict:
         """
-        Only 'exposed' function of a Plot, calls other methods in order
+        Fill out the plot in some way - different implementation for each subclass
         """
-        self._init()
-        results = select_dict(conn, self.query, binds)
-        self.groups = self._make_groups(results, self.gFunc, self.glFunc)
+        raise NotImplementedError
 
-        for g in self.groups:
-            self._draw(ax,g)
-
-        self._set_labels(ax)
-        if self._has_leg:
-            self._set_legend(ax)
-
-
-    def _set_labels(self, ax : AX) -> None:
+    @abstractmethod
+    def _process_group_dict(self,d:Dict)->Any:
         """
-        Default label setting behavior is just x axis and title
+        Take a DB output dict and make a pair: <SOMETHING>,(group ID, group label)
         """
-        ax.set_xlabel(self.xlab)
-        ax.set_ylabel(self.ylab)
-        ax.set_title(self.title)
+        return d
+
+    @property
+    @abstractmethod
+    def kw(self) -> Set[str]:
+        '''List of valid keyword arguments'''
+        return {'query','title','xlab',
+                'xcols','xfunc','lcols','lfunc','gcols','gfunc'}
+
+    #------------------------#
+    # Static / Class methods #
+    #------------------------#
+    @staticmethod
+    def pltdict()->Dict[str,Type['Plot']]:
+        '''Mapping each type of plot to a unique string'''
+        d = {'line':LinePlot,'bar':BarPlot,'hist':HistPlot} # type: Dict[str,Type['Plot']]
+        return d
 
     @staticmethod
     def _make_groups(inputs : List[Dict[str,Any]],
@@ -109,51 +155,24 @@ class Plot(object):
         groups = {} # type: Dict[Any,Group]
         counter = 0
         for x in inputs:
-            g = gFunc.apply(x)
+            g = gFunc(x)
             if g in groups:
                 groups[g].add_elem(x)
             else:
-                gl = glFunc.apply(x)
+                gl = glFunc(x)
                 groups[g] = Group(id=counter,label=gl,rep=g,elems=[x])
                 counter+=1
 
         return list(groups.values())
 
-    @abstractmethod
-    def _draw(self, ax : AX, g : Group) -> None:
-        """
-        Fill out the plot in some way - different implementation for each subclass
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def _process_dict(self,d:Dict)->Any:
-        """
-        Take a DB output dict and make a pair: <SOMETHING>,(group ID, group label)
-        """
-        raise NotImplementedError
-
-    @staticmethod
-    def _set_legend(ax:AX)->None:
-        '''ugly GUI stuff'''
-        handles, labels = ax.get_legend_handles_labels()
-        by_label = OrderedDict(zip(labels, handles))
-        ax.legend(by_label.values(), by_label.keys())
-        leg = ax.legend()
-        if leg: leg.set_draggable(True)
-
-    @staticmethod
-    def pltdict()->Dict[str,Type['Plot']]:
-        '''Mapping each type of plot to a unique string'''
-        d = {'line':LinePlot,'bar':BarPlot,'hist':HistPlot} # type: Dict[str,Type['Plot']]
-        return d
-
     @classmethod
     def from_file(cls,pth:str)->'Plot':
         '''Creates a Line/Bar/Hist plot from a JSON file containing KW args'''
+
         # Parse JSON file
         with open(pth,'r') as f:
             dic = load(f)
+
         # Determine which __init__ method should be used
         typ     = dic.pop('type').lower()
         plotter = cls.pltdict()[typ]
@@ -161,68 +180,100 @@ class Plot(object):
         # Create Plot object
         return plotter(**dic)
 
+    #------------#
+    # Properties #
+    #------------#
+
     @property
     def _has_leg(self)->bool:
-        return bool(self.data.get('gcols'))
+        return bool(self['gcols'])
+
+    @property
+    def opacity(self) -> float:
+        return max(0.1,1-len(self.groups)/10)
+
+    #-------------------#
+    # Support functions #
+    #-------------------#
+    def _groups(self, conn : Conn, binds : list = [], funcs : Dict[str,C] = {}) -> None:
+        """
+        Populates: self.groups
+        """
+        self._init(funcs)
+        assert self['query']
+        results = select_dict(conn, self['query'], binds)
+        self.groups = self._make_groups(results, self.gFunc, self.glFunc)
+
+    def _data(self) -> list:
+        ''' This seems to be a general enough implementation'''
+        # for g in self.groups:
+
+        return [self._draw(g.map(self._process_group_dict)) for g in self.groups]
 
 ################################################################################
 class LinePlot(Plot):
     """
     Scatter or line plot - a relation between two numeric variables
     """
-    def _init(self)->None:
-        super()._init()
+    def _init(self, funcs : Dict[str,C])->None:
+        super()._init(funcs)
 
-        assert 'ycols' in self.data
+        assert 'ycols' in self, 'LinePlot requires ycols to be specified'
 
         # Y func, handle defaults
-        if not 'yfunc' in self.data:
-            if isinstance(self.data['ycols'],str):
-                ycols = self.data['ycols'].split()
+        if not 'yfunc' in self:
+            if isinstance(self['ycols'],str):
+                ycols = self['ycols'].split()
             else:
-                ycols = self.data['ycols']
+                ycols = self['ycols']
             assert len(ycols) == 1
-            self.data['yfunc'] = identity
+            self['yfunc'] = identity
 
-        self.yFunc   = FnArgs(self.data['yfunc'],self.data['ycols'])
-        self.post    = self.data.get('post')
-        self.count   = self.data.get('count') # NOT YET (RE)IMPLEMENTED
-        self.scatter = self.data.get('scatter')
+        self.yFunc = FnArgs(func = self['yfunc'], args = self['ycols'], funcs = funcs)
 
-    def _draw(self, ax : AX, g : Group) -> None:
-        """Make a query, process results, then draw the lines"""
+    @property
+    def kw(self)->Set[str]:
+        return super().kw | {'ylab','ycols','yfunc','scatter'}
+
+    def _draw(self, g : Group) -> dict:
+        """process query results, then draw the lines"""
         # do aggregations, postprocessing to modify 'g', eventually
-        g.map(self._process_dict)
-        self._add_line(ax,g)
+        g.sort(key=lambda x: x['x'])
+        return self._add_line(g)
 
-    def _process_dict(self, d : dict) -> Tuple[float,float,str]:
+    def _process_group_dict(self, d : dict) -> dict:
         """
         Take a raw dictionary output from DB and make a new dictionary with:
             x,y (floats) and l (label)
         """
 
-        return {'x' : self.xFunc.apply(d),
-                'y' : self.yFunc.apply(d),
-                'l' : self.lFunc.apply(d)}
+        return dict(x = self.xFunc(d),
+                    y = self.yFunc(d),
+                    l = self.lFunc(d))
 
-        return output
-
-    def _add_line(self,ax:AX,g:Group)->None:
+    def _add_line(self, g : Group) -> dict:
         """
         Draw a line from a Group with (X,Y,LABEL) tuples as elements
         """
-        leg,     xyl    = g.label,g.elems
-        handles, labels = ax.get_legend_handles_labels()
 
-        if len(xyl)>0:
-            sty  = mkStyle(leg)    # get line style based on legend name
-            line = ' ' if self.scatter else sty.line
+        leg, xyl = g.label, g.elems
 
-            ax.plot(mapfst(xyl),mapsnd(xyl),linestyle=line
-                     ,color=sty.color,marker=sty.marker,label=leg) # add line
-            for (x,y,l) in xyl:
-                ax.text(x,y,l,size=9                              # add data labels
-                    ,horizontalalignment='center',verticalalignment='bottom')
+        sty  = mkStyle(leg)    # get line style based on legend name
+        scatr= self['scatter'] and self['scatter'][0].lower()=='t'
+        mode = 'markers' if scatr else 'lines+markers'
+        return dict(x       = g['x'],
+                    y       = g['y'],
+                    text    = g['l'],
+                    mode    = mode,
+                    name    = g.label,
+                    marker  = dict(opacity = self.opacity,
+                                   color   = sty.color),
+                    line    = dict(color   = sty.color,
+                                   dash    = sty.line,
+                                   shape   = 'spline'))
+
+    def _layout(self)->dict:
+        return super()._layout()
 
 ################################################################################
 class BarPlot(Plot):
@@ -230,73 +281,71 @@ class BarPlot(Plot):
     Bar plots - relation between a real-valued variable and a categorical one
     """
 
-    def _init(self)->None:
-        super()._init()
+    def _init(self, funcs : Dict[str,C])->None:
+        super()._init(funcs)
 
         # SubGrouping of data points
-        if 'spcols' not in self.data:
+        if 'spcols' not in self:
             # no way to subgroup if no columns provided
-            self.spFunc = FnArgs(func = const(1), args = [])
-            self.slFunc = FnArgs(func = const('') ,args = [])
+            self.spFunc = FnArgs(func = const(1), args = [], funcs = funcs)
+            self.slFunc = FnArgs(func = const('') ,args = [], funcs = funcs)
         else:
-            gcols = self.data['spcols']
+            gcols = self['spcols']
 
-            if 'gfunc' not in self.data:
-                self.spFunc = FnArgs(func = joiner, args = gcols)
+            if 'gfunc' not in self:
+                self.spFunc = FnArgs(func = joiner, args = gcols, funcs = funcs)
             else:
-                self.spFunc = FnArgs(func = self.data['gfunc'], args = gcols)
+                self.spFunc = FnArgs(func = self['gfunc'], args = gcols, funcs = funcs)
 
-            glcols = self.data['slcols' if 'slcols' in self.data else 'spcols']
+            glcols = self['slcols' if 'slcols' in self else 'spcols']
 
-            if 'slfunc' not in self.data:
-                self.slFunc = FnArgs(func = joiner, args = glcols)
+            if 'slfunc' not in self:
+                self.slFunc = FnArgs(func = joiner, args = glcols, funcs = funcs)
             else:
-                self.slFunc = FnArgs(func = self.data['slfunc'], args = glcols)
+                self.slFunc = FnArgs(func = self['slfunc'], args = glcols, funcs = funcs)
 
-        self.aggFunc = self.data.get('aggFunc',avg)
-        self.seen = set() # used to avoid plotting the same legend entries multiple times
+        self.aggFunc = avg # tell typechecker that this is the real type
+
+        if self['aggfunc']:
+            self.aggFunc = mkFunc(self['aggfunc'],funcs)  # type: ignore
+
+        self.seen = set() # type: set ### used to avoid plotting the same legend entries multiple times
+
+    def _process_group_dict(self, d : dict)->dict:
+        return d # do nothing
+
+    def _process_subgroup_dict(self,d:dict)->dict:
+        return dict(val = self.xFunc(d), l = self.lFunc(d))
+
+    def _draw(self, g : Group) -> dict:
+
+        color = mkStyle(g.rep).color
+
+        subgroups_ = self._make_groups(g.elems,self.spFunc,self.slFunc)
+        subgroups  = [sg.map(self._process_subgroup_dict) for sg in subgroups_]
+
+
+        vals = [self.aggFunc(sg['val']) for sg in subgroups]
+        color = mkStyle(g.rep).color
+
+        return dict(type = 'bar',
+                    name = g.label,
+                    x    = [sg.label for sg in subgroups],
+                    y    = vals,
+                    marker = dict(color=color))
+
+    def _layout(self)->dict:
+        return Layout(super()._layout(),
+                      barmode = 'group')
+
     @property
     def _has_leg(self)->bool:
-        return bool(self.data.get('spcols'))
+        return bool(self['spcols'])
 
-    def _process_dict(self,d:dict)->dict:
-        return {'val': self.xFunc.apply(d)}
+    @property
+    def kw(self)->Set[str]:
+        return super().kw | {'aggfunc','spcols','spfunc'}
 
-    def _draw(self, ax : AX, g : Group) -> None:
-        ax.set_xticklabels(ax.get_xticklabels()+[g.label])
-
-        if self.spFunc is None:
-            color = mkStyle(g.rep).color
-            val = self.aggFunc([x['val'] for x in g.elems])
-            ax.bar(x      = g.id,
-                   height = val,
-                   width  = 1,
-                   color  = color,
-                   align  = 'edge')
-
-        else:
-            subgroups = self._make_groups(g.elems,self.spFunc,self.slFunc)
-            n = len(subgroups)
-            for i,sg in enumerate(subgroups):
-                sg.map(self._process_dict) # convert dictionaries into floats
-                color = mkStyle(sg.rep).color
-                val   = self.aggFunc([x['val'] for x in sg.elems])
-                agg   = len(sg.elems) # PRINT THIS TO SCREEN IF FLAG IS TRUE?
-
-                ax.bar(x      = g.id + i/n,
-                       height = val,
-                       width  = 1/n,
-                       color  = color,
-                       label  = sg.label if sg.label not in self.seen else '',
-                       align  = 'edge')
-
-                self.seen.add(sg.label)
-    def _set_labels(self,ax:AX)->None:
-        super()._set_labels(ax)
-        ax.set_ylabel(self.ylab)
-        ax.set_xticks([x+0.5 for x in range(len(self.groups))])
-        ax.set_xticklabels([x.label for x in self.groups])
-        [ax.axvline(i,linestyle='--') for i in range(1,len(self.groups))]
 
 ################################################################################
 
@@ -307,17 +356,33 @@ class HistPlot(Plot):
         - norm :: bool (whether or not to normalize histogram such that sum of all bars is 1)
     """
 
-    def _init(self)->None:
-        super()._init()
-        self.bins = self.data.get('bins',10)
-        self.norm = self.data.get('norm',False)
+    def _init(self, funcs : Dict[str,C]) -> None:
+        assert 'lcols' not in self, "Cannot label data points of a histogram"
+        super()._init(funcs)
+        self.bins = self['bins'] or 10
+        self.norm = self['norm'] or False
 
-    def _process_dict(self,d:Dict)->Tuple[float,str]:
-        assert self.xFunc
-        return ((self.xFunc.apply(d),
-                '' if self.lFunc is None else self.lFunc.apply(d)))
+    @property
+    def kw(self) -> Set[str]:
+        return super().kw | {'bins', 'norm'}
 
-    def _draw(self,ax:AX,g:Group)->None:
+    def _process_dict(self, d : Dict) -> dict:
+        return dict(x = self.xFunc(d))
+
+    def _draw(self, g : Group) -> dict:
         color = mkStyle(g.label).color
-        ax.hist(mapfst(g.elems),histtype='bar',label=g.label,bins=self.bins,
-                color= color, density = self.norm)
+
+        start, end = min(g['x']), max(g['x'])
+
+        return dict(type     = 'histogram',
+                    x        = g['x'],
+                    xbins    = dict(start = start,
+                                    end   = end,
+                                    size  = 10000000),
+                    histnorm = 'probability' if self.norm else None,
+                    marker   = {'color':color},
+                    opacity  = self.opacity,
+                    name     = g.label)
+
+    def _layout(self)->dict:
+        return super()._layout()

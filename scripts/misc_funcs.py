@@ -3,6 +3,7 @@ from typing import List,Tuple,Optional as O,Callable as C
 import json
 import scipy.stats.mstats as mstatt   # type: ignore
 import numpy as np   # type: ignore
+from math import log 
 
 ################################################################################
 """
@@ -94,59 +95,7 @@ def timestamp2months(ts:int)->float:
 def sumJson(x:str)->float:
     return abs(sum(json.loads(x))) if x is not None else None
 
-def err_lat_correction(uncorrected  : float
-                      ,sg           : int
-                      ,n            : int
-                      ,expt         : float
-                      ) -> float:
-    if sg == 194:
-        assert n == 2
-        multFactor = 1.0
-    elif  sg == 229:
-        if n == 1:
-            multFactor = 3.0**(0.5)/2
-        elif n == 2:
-            multFactor = 1
-        else:
-            raise NotImplementedError('Unexpected n_atoms for bcc: ',n)
-    elif sg == 225:
-        if n == 1:
-            multFactor = 2**(-0.5) #trigonal-shaped primitive cells
-        elif n==4:
-            multFactor =1
-        else:
-            raise NotImplementedError('Unexpected n_atoms for fcc: ',n)
-    elif sg == 227:
-        if n == 2:
-            multFactor = 2**(-0.5) #trigonal-shaped primitive cells
-        elif n==8:
-            multFactor =1
-        else:
-            raise NotImplementedError('Unexpected n_atoms for diamond: ',n)
-    else:
-        raise NotImplementedError('UNEXPECTED SPACE GROUP %s'%sg)
 
-
-    return float(uncorrected) - float(expt) * multFactor
-
-
-def eos_fit(json_ve_pairs:str)->dict:
-    from json import loads
-    from ase.eos import EquationOfState         # type: ignore
-    from ase.units import kJ                    # type: ignore
-    from numpy.linalg.linalg import LinAlgError # type: ignore
-    vol,eng = zip(*loads('[%s]'%json_ve_pairs))
-    eos = EquationOfState(vol,eng)
-    try:
-        v0, e0, b = eos.fit()
-        b0= b/kJ*1e24
-        if b < 1e5:
-            return {'vol':v0,'eng':e0,'bulkmod':b0}
-        else:
-            print('warning: excluding bulk mod of %f GPa'%b)
-            return {'vol':None,'eng':None,'bulkmod':None}
-    except (ValueError,LinAlgError):
-        return {'vol':None,'eng':None,'bulkmod':None}
 # #########################################
 # Label / Legend Funcs :: (a,...) -> String
 # -----------------------------------------

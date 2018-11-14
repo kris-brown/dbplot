@@ -9,44 +9,44 @@ class Style(object):
         self.marker = style_tuple[2]
 ################################################################################
 styleDict = {
-    'H': ('-','black','o')       ,'Li': ('-','purple','o')       ,'Be':('-','mediumaquamarine','o')
-    ,'B':('-','pink','o')        ,'C':('--','grey','o')          ,'N':('-','blue','o')
-    ,'O':('-','red','o')         ,'F':(':','forestgreen','o')    ,'Na':(':','purple','o')
-    ,'Mg':('-','lightcoral','x') ,'Al':('-','firebrick','o')     ,'Si':('-','palevioletred','o')
-    ,'P':('-','orange','o')      ,'S':('-','red','x')            ,'Cl':('-.','green','o')
-    ,'K':('-','purple','*')      ,'Ca':('-','lightsalmon','o')   ,'Sc':(':','grey','o')
-    ,'Ti':('-','grey','+')       ,'V':(':','blue','o')           ,'Cr':('-','cyan','o')
-    ,'Mn':('-.','purple','x')    ,'Fe':('-','darkred','o')       ,'Co':('-','pink','x')
-    ,'Ni':('--','green','o')     ,'Cu':(':','brown','o')         ,'Zn':('-','indigo','x')
-    ,'Ga':('-','pink','o')       ,'Ge':('--','lightblue','o')    ,'As':('-','fuchsia','+')
-    ,'Se':('-','turquoise','o')  ,'Br':('-','azure','o')         ,'Rb':('-','black','o')
-    ,'Sr':('-','olive','o')      ,'Y':('-','plum','o')           ,'Zr':('-','palevioletred','o')
-    ,'Nb':('-','aqua','o')       ,'Mo':('-','khaki','o')         ,'Tc':('-','green','o')
-    ,'Ru':('-','lime','o')       ,'Rh':('-','teal','o')          ,'Pd':('-','grey','o')
-    ,'Ag':('-','silver','o')     ,'Cd':('-','purple','o')        ,'In':('-','blue','o')
-    ,'Sn':('-.','green','o')     ,'Sb':('-','red','o')           ,'Te':('-','plum','o')
-    ,'I':('-','red','o')         ,'Cs':('-','orange','o')        ,'Ba':('-','tan','o')
-    ,'Os':('-','pink','o')       ,'Ir':('-','green','o')         ,'Pt':('-','blue','o')
-    ,'Au':('-','gold','o')       ,'Pb':(':','brown','o')
+    'H': ('solid','black','o')       ,'Li': ('solid','purple','o')       ,'Be':('solid','mediumaquamarine','o')
+    ,'B':('solid','pink','o')        ,'C':('dash','grey','o')          ,'N':('solid','blue','o')
+    ,'O':('solid','red','o')         ,'F':('dot','forestgreen','o')    ,'Na':('dot','purple','o')
+    ,'Mg':('solid','lightcoral','x') ,'Al':('solid','firebrick','o')     ,'Si':('solid','palevioletred','o')
+    ,'P':('solid','orange','o')      ,'S':('solid','red','x')            ,'Cl':('dashdot','green','o')
+    ,'K':('solid','purple','*')      ,'Ca':('solid','lightsalmon','o')   ,'Sc':('dot','grey','o')
+    ,'Ti':('solid','grey','+')       ,'V':('dot','blue','o')           ,'Cr':('solid','cyan','o')
+    ,'Mn':('dashdot','purple','x')    ,'Fe':('solid','darkred','o')       ,'Co':('solid','pink','x')
+    ,'Ni':('dash','green','o')     ,'Cu':('dot','brown','o')         ,'Zn':('solid','indigo','x')
+    ,'Ga':('solid','pink','o')       ,'Ge':('dash','lightblue','o')    ,'As':('solid','fuchsia','+')
+    ,'Se':('solid','turquoise','o')  ,'Br':('solid','azure','o')         ,'Rb':('solid','black','o')
+    ,'Sr':('solid','olive','o')      ,'Y':('solid','plum','o')           ,'Zr':('solid','palevioletred','o')
+    ,'Nb':('solid','aqua','o')       ,'Mo':('solid','khaki','o')         ,'Tc':('solid','green','o')
+    ,'Ru':('solid','lime','o')       ,'Rh':('solid','teal','o')          ,'Pd':('solid','grey','o')
+    ,'Ag':('solid','silver','o')     ,'Cd':('solid','purple','o')        ,'In':('solid','blue','o')
+    ,'Sn':('dashdot','green','o')     ,'Sb':('solid','red','o')           ,'Te':('solid','plum','o')
+    ,'I':('solid','red','o')         ,'Cs':('solid','orange','o')        ,'Ba':('solid','tan','o')
+    ,'Os':('solid','pink','o')       ,'Ir':('solid','green','o')         ,'Pt':('solid','blue','o')
+    ,'Au':('solid','gold','o')       ,'Pb':('dot','brown','o')
 
-    ,'H2':('-','black','o')      ,'O2':('-','red','o')           ,'N2':('-','green','o')
-    ,'F2':('-','purple','o')     ,'Br2':('-','brown','o')        ,'CH4':('-','blue','o')
-    ,'Cl2':('-','pink','o')      ,'H2O':(':','blue','x')         ,'CO2':(':','brown','x')
-    ,'CO':(':','red','x')
+    ,'H2':('solid','black','o')      ,'O2':('solid','red','o')           ,'N2':('solid','green','o')
+    ,'F2':('solid','purple','o')     ,'Br2':('solid','brown','o')        ,'CH4':('solid','blue','o')
+    ,'Cl2':('solid','pink','o')      ,'H2O':('dot','blue','x')         ,'CO2':('dot','brown','x')
+    ,'CO':('dot','red','x')
 
-    ,'mBEEF':('-','black','o')   ,'PBE':('-','red','o')          ,'BEEF':('-','blue','o')
-    ,'RPBE':('-','green','o')
+    ,'mBEEF':('solid','black','o')   ,'PBE':('solid','red','o')          ,'BEEF':('solid','blue','o')
+    ,'RPBE':('solid','green','o')
 
-    ,'bulkmod':('-','red','o') ,'relax':('-','blue','o')         ,'latticeopt':('-','black','o')
-    ,'vib':('-','green','o')   ,'vcrelax':('-','purple','o')
+    ,'bulkmod':('solid','red','o') ,'relax':('solid','blue','o')         ,'latticeopt':('solid','black','o')
+    ,'vib':('solid','green','o')   ,'vcrelax':('solid','purple','o')
 
 
-    ,'hexagonal': ('-','black','o') ,'fcc':('-','red','o') ,'bcc':('-','blue','o')
-    ,'diamond':('-','green','o')
+    ,'hexagonal': ('solid','black','o') ,'fcc':('solid','red','o') ,'bcc':('solid','blue','o')
+    ,'diamond':('solid','green','o')
 
-    ,'sg15':('-','black','o') ,'paw':('-','red','o') ,'gbrv15pbe':('-','blue','o')
+    ,'sg15':('solid','black','o') ,'paw':('solid','red','o') ,'gbrv15pbe':('solid','blue','o')
 
-    ,'':('-','red','o')}
+    ,'':('solid','red','o')}
 ################################################################################
 # Helper functions
 ##################
@@ -67,7 +67,7 @@ def mkStyle(label : str)->Style:
     if sty:
         return sty
     else:
-        filtered = str(label).split('_')[0].split('-')[0] # strip label to its essentials
+        filtered = str(label).split('_')[0].split('solid')[0] # strip label to its essentials
         sty = getStyle(filtered)
         if sty:
             return sty

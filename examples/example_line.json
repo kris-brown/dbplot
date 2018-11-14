@@ -4,15 +4,16 @@
   "query"  : "SELECT job_id,timestamp,user from job ORDER BY RAND() LIMIT 1000",
 
   "xcols"  : "job_id",
-  "xfunc"  : "lambda x: x**2",
+  "xfunc"  : "lambda x: 1.1 * x + 2",
 
   "ycols"  : "timestamp",
-  
+  "yfunc"  : "log",
+
   "gcols"  : "user",
 
   "title"  : "Trivial lineplot",
-  "xlab"   : "$(Job ID)^2$",
+  "xlab"   : "$ID_{Job}$",
   "ylab"   : "Timestamp",
 
-  "scatter": "True"
+  "scatter": "False"
 }

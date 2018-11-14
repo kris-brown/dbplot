@@ -5,5 +5,5 @@
   "gcols": "user",
   "title": "Trivial histogram",
   "xlab" : "Timestamp",
-  "bins" : 100
+  "bins" : 10
 }

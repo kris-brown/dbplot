@@ -1,8 +1,10 @@
 {
-  "type" : "bar",
-  "query": "SELECT COUNT(1) as count,user from job GROUP BY user",
-  "xcols": "count",
-  "gcols": "user",
-  "title": "Trivial bar",
-  "xlab" : "User"
+  "type"    : "bar",
+  "query"   : "SELECT atomic_radius,geochemical_class,lattice_struct from element WHERE atomic_radius is not null and geochemical_class is not null and lattice_struct is not null GROUP BY geochemical_class,lattice_struct",
+  "xcols"   : "atomic_radius",
+  "aggfunc" : "avg",
+  "gcols"   : "geochemical_class",
+  "spcols"  : "lattice_struct",
+  "title"   : "Trivial bar",
+  "xlab"    : "Lattice structure"
 }
