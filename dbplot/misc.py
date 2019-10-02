@@ -1,8 +1,8 @@
 # External Modules
-from typing  import TypeVar,List,Callable as C,Optional as O,Any,Dict,Union as U
+from typing  import TypeVar,List,Callable as C,Optional as O,Any,Dict,Union as U, TextIO
 from inspect import getfullargspec,isfunction,getsourcefile,getmembers,isbuiltin
 from importlib.util import spec_from_file_location,module_from_spec
-
+import json
 '''
 Miscellaneous helper classes
 '''
@@ -11,6 +11,16 @@ Fn = U[str,C]
 A = TypeVar('A')
 ################################################################################
 
+# ######################
+# # Json decoder for multiline items
+# # --------------------
+
+def load(f : TextIO)->dict:
+    json_contents = f.read()
+    json_contents = json_contents.replace('\r',' ').replace('\n',' ')
+    return json.loads(json_contents)
+
+################################################################################
 def identity(x : A) -> A: return x
 
 def flatten(lol : List[List[A]]) -> List[A]:

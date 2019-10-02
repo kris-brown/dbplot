@@ -45,7 +45,8 @@ styleDict = {
     ,'diamond':('solid','green','o')
 
     ,'sg15':('solid','black','o') ,'paw':('solid','red','o') ,'gbrv15pbe':('solid','blue','o')
-
+    ,'H_PBE':('solid','black','o'),'H_LDA':('dot','black','o'),'O_PBE':('solid','red','o'),'O_LDA':('dot','red','o'),
+    'N_PBE':('solid','blue','o'),'N_LDA':('dot','blue','o')
     ,'':('solid','red','o')}
 ################################################################################
 # Helper functions
@@ -75,3 +76,8 @@ def mkStyle(label : str)->Style:
             all_stys = list(styleDict.values())
             sty_ind  = str2int(str(label)) % len(styleDict)
             return Style(all_stys[sty_ind])
+
+
+
+if __name__ == '__main__':
+    import pdb; pdb.set_trace()
