@@ -2,7 +2,7 @@
 from typing  import TypeVar,List,Callable as C,Optional as O,Any,Dict,Union as U
 from inspect import getfullargspec,isfunction,getsourcefile,getmembers,isbuiltin
 from importlib.util import spec_from_file_location,module_from_spec
-
+import numpy as np # type: ignore
 '''
 Miscellaneous helper classes
 '''
@@ -35,7 +35,7 @@ def path_to_funcs(pth : str) -> Dict[str,C]:
         raise ValueError(pth)
     else:
         mod  = module_from_spec(spec)
-        spec.loader.exec_module(mod)
+        spec.loader.exec_module(mod) # type: ignore
 
     def check(o : C) -> bool:
         return isfunction(o) or isbuiltin(o)
@@ -56,7 +56,7 @@ def mkFunc(x : O[Fn], funcs : Dict[str,C]) -> C:
     elif isinstance(x,str):
         locals().update(funcs)
         f = eval(x)
-        assert isinstance(f,functype)
+        assert hasattr(f,'__call__'), type(f)
         return f
     else:
         raise ValueError

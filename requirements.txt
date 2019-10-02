@@ -1,5 +1,4 @@
-pyqt5
-mysqlclient
+psycopg2-binary
 scipy
 numpy
 plotly

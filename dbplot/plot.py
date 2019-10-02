@@ -9,7 +9,7 @@ from json        import load
 from plotly.graph_objs import Figure,Layout # type: ignore
 
 # Internal Modules
-from dbplot.db     import ConnectInfo as Conn,select_dict
+from dbplot.db     import ConnectInfo as Conn
 from dbplot.misc   import FnArgs,Group,mapfst,mapsnd,avg,const,identity,joiner,mkFunc
 from dbplot.style  import mkStyle
 
@@ -54,6 +54,10 @@ class Plot(object):
         self._groups(conn,binds,funcs)
         return Figure(data=self._data(),layout=self._layout())
 
+    @abstractmethod
+    def csv(self, pth : str) -> None:
+        '''Write plot data to a csv'''
+        raise NotImplementedError
     #------------------#
     # Abstract methods #
     #------------------#
@@ -131,7 +135,7 @@ class Plot(object):
     def kw(self) -> Set[str]:
         '''List of valid keyword arguments'''
         return {'query','title','xlab',
-                'xcols','xfunc','lcols','lfunc','gcols','gfunc'}
+                'xcols','xfunc','lcols','lfunc','gcols','gfunc','glfunc'}
 
     #------------------------#
     # Static / Class methods #
@@ -201,7 +205,7 @@ class Plot(object):
         """
         self._init(funcs)
         assert self['query']
-        results = select_dict(conn, self['query'], binds)
+        results = conn.select_dict(self['query'], binds)
         self.groups = self._make_groups(results, self.gFunc, self.glFunc)
 
     def _data(self) -> list:
@@ -230,6 +234,10 @@ class LinePlot(Plot):
             self['yfunc'] = identity
 
         self.yFunc = FnArgs(func = self['yfunc'], args = self['ycols'], funcs = funcs)
+
+    def csv(self, pth : str) -> None:
+        '''Write plot data to a csv'''
+        raise NotImplementedError
 
     @property
     def kw(self)->Set[str]:
@@ -311,6 +319,10 @@ class BarPlot(Plot):
 
         self.seen = set() # type: set ### used to avoid plotting the same legend entries multiple times
 
+    def csv(self, pth : str) -> None:
+        '''Write plot data to a csv'''
+        raise NotImplementedError
+
     def _process_group_dict(self, d : dict)->dict:
         return d # do nothing
 
@@ -332,7 +344,7 @@ class BarPlot(Plot):
                     name = g.label,
                     x    = [sg.label for sg in subgroups],
                     y    = vals,
-                    marker = dict(color=color))
+                    )#marker = dict(color=color))
 
     def _layout(self)->dict:
         return Layout(super()._layout(),
@@ -361,6 +373,10 @@ class HistPlot(Plot):
         super()._init(funcs)
         self.bins = self['bins'] or 10
         self.norm = self['norm'] or False
+
+    def csv(self, pth : str) -> None:
+        '''Write plot data to a csv'''
+        raise NotImplementedError
 
     @property
     def kw(self) -> Set[str]:
