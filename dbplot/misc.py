@@ -45,7 +45,7 @@ def path_to_funcs(pth : str) -> Dict[str,C]:
         raise ValueError(pth)
     else:
         mod  = module_from_spec(spec)
-        spec.loader.exec_module(mod)
+        spec.loader.exec_module(mod)  # type: ignore
 
     def check(o : C) -> bool:
         return isfunction(o) or isbuiltin(o)

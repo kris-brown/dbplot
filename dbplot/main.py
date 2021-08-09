@@ -21,7 +21,7 @@ def main(args:dict)->None:
 
     # Get DB info
     #----------
-    dbpth = environ['DB_JSON'] or args['db'] or '/Users/ksb/Documents/JSON/functionals.json'
+    dbpth = args.get('db') or environ['DB_JSON']
     db    = ConnectInfo.from_file(dbpth)
 
     # Add functions into namespace from user-specified files
