@@ -6,14 +6,15 @@ from os.path import exists
 from random  import random
 from pprint  import pformat
 from json    import load, dump
+from copy import deepcopy
 
+from psycopg2.extras import DictCursor               # type: ignore
 from psycopg2        import connect,Error                   # type: ignore
-from psycopg2.extras import DictCursor                      # type: ignore
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT  # type: ignore
-
-Connection = Any
-
 ################################################################################
+
+localuser = environ["USER"]
+Connection = Any
 
 class ConnectInfo(object):
     """
@@ -52,7 +53,8 @@ class ConnectInfo(object):
                 conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
                 return conn
             except Error as e:
-                print(e); sleep(1)
+                print(e)
+                sleep(1)
 
         raise Error()
 
@@ -70,8 +72,44 @@ class ConnectInfo(object):
         with open(pth,'r') as f:
             return ConnectInfo(**load(f))
 
-    def select_dict(self, q : str, binds : list = []) -> List[dict]:
-        # print('SELECTING with: \n'+sub(q,binds))
-        with self.connect().cursor(cursor_factory=DictCursor) as cxn:
-            cxn.execute(q.replace('%','%%'),vars=binds)
+    def copy(self)->Any:
+        return deepcopy(self)
+
+    def neutral(self)->Connection:
+        copy = self.copy()
+        copy.db = 'postgres'
+        conn = copy.connect()
+        return conn.cursor()
+
+    def kill(self)->None:
+        '''Kills connections to the DB'''
+        killQ = '''SELECT pg_terminate_backend(pg_stat_activity.pid)
+                    FROM pg_stat_activity
+                    WHERE pg_stat_activity.datname = %s
+                      AND pid <> pg_backend_pid();'''
+        with self.neutral() as cxn:
+            cxn.execute(killQ,vars=[self.db])
+
+    def drop(self)->None:
+        '''Completely removes a DB'''
+        dropQ = 'DROP DATABASE IF EXISTS ' + self.db
+        self.kill()
+        with self.neutral() as cxn:
+            cxn.execute(dropQ,vars=[self.db])
+
+    def create(self)->None:
+        '''Kills connections to the DB'''
+        createQ = 'CREATE DATABASE ' + self.db
+        with self.neutral() as cxn:
+            cxn.execute(createQ,vars=[self.db])
+
+
+def select_dict(conn : ConnectInfo, q : str, binds : list = []) -> List[dict]:
+    with conn.connect().cursor(cursor_factory = DictCursor) as cxn: # type: ignore
+        if 'group_concat' in q.lower():
+            cxn.execute("SET SESSION group_concat_max_len = 100000")
+        try:
+            cxn.execute(q,vars=binds)
             return cxn.fetchall()
+        except Error as e:
+            raise ValueError('Query failed: '+q)

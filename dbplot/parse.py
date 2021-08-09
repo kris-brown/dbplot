@@ -30,6 +30,11 @@ parser.add_argument('--db',
                     type    = str,
                     help    = 'Path to JSON file with connection info')
 
+parser.add_argument('--open',
+                    default = False,
+                    type    = strtobool,
+                    help    = 'auto open the plot once created')
+
 parser.add_argument('--pltpth',
                     default = '',
                     type    = str,
@@ -55,6 +60,10 @@ parser.add_argument('--funcs',
                     type    = str.split,
                     help    = 'Space-separated list of paths to python files '\
                               ' binding functions to names')
+
+parser.add_argument('--outpth',
+                    type    = str,
+                    help    = 'output file name for plot')
 
 parser.add_argument("--args",
                     action  = StoreDictKeyPair,

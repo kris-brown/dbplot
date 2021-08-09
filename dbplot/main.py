@@ -1,9 +1,10 @@
 # External Modules
 from typing            import Any
 from os                import environ,listdir
-from os.path           import isdir,join
+from os.path           import isdir,join,basename
 from ast               import literal_eval
 from plotly.offline    import plot # type: ignore
+from jinja2            import Template
 # Internal Modules
 from dbplot.plot     import Plot
 from dbplot.db       import ConnectInfo
@@ -20,7 +21,7 @@ def main(args:dict)->None:
 
     # Get DB info
     #----------
-    dbpth = args['db'] or '/Users/ksb/Documents/JSON/functionals.json' or environ['DB_JSON']
+    dbpth = args.get('db') or environ['DB_JSON']
     db    = ConnectInfo.from_file(dbpth)
 
     # Add functions into namespace from user-specified files
@@ -39,7 +40,7 @@ def main(args:dict)->None:
     # Create Plot object
     #-------------------
     pp = args['pltpth']
-
+    filename = args['outpth'] or basename(pp).replace('.json','.html')
     if pp:
         if isdir(pp):
             ps = [Plot.from_file(join(pp,x)) for x in listdir(pp) if x[-4:]=='json']
@@ -52,10 +53,12 @@ def main(args:dict)->None:
         plotter = Plot.pltdict()[args['type']]
         ps      = [plotter(query=args['query'], **args['args'])]
 
-
-    plot_urls = [plot(p.fig(conn=db, binds = binds, funcs = funcs),
-                      filename='temp%d.html'%i) for i,p in enumerate(ps)]
-
+    if len(ps)>1:
+        plot_urls = [plot(p.fig(conn=db, binds = binds, funcs = funcs),
+                          filename='%s%d.html'%(filename,i),include_mathjax='cdn',auto_open = args['open']) for i,p in enumerate(ps)]
+    else:
+        plot_urls = plot(ps[0].fig(conn=db, binds = binds, funcs = funcs),
+                          filename=filename,include_mathjax='cdn',auto_open = args['open'])
 
 
 if __name__=='__main__':

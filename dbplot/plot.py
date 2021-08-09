@@ -4,15 +4,13 @@ from typing      import (Type,Any,Tuple,List,Dict,TypeVar,Set,
 from abc         import abstractmethod
 from operator    import itemgetter
 from collections import OrderedDict
-from json        import load
 
 from plotly.graph_objs import Figure,Layout # type: ignore
 
 # Internal Modules
-from dbplot.db     import ConnectInfo as Conn
-from dbplot.misc   import FnArgs,Group,mapfst,mapsnd,avg,const,identity,joiner,mkFunc
+from dbplot.db     import ConnectInfo as Conn,select_dict
+from dbplot.misc   import FnArgs,Group,mapfst,mapsnd,avg,const,identity,joiner,mkFunc, load
 from dbplot.style  import mkStyle
-
 #############################################################################
 
 
@@ -64,9 +62,22 @@ class Plot(object):
 
     @abstractmethod
     def _layout(self) -> dict:
-        return Layout(title = self['title'],
-                      xaxis = dict(title = self['xlab']),
-                      yaxis = dict(title = self['ylab']))
+        frame = self['frame'] and self['frame'].lower()[0]=='t'
+        square = self['square'] and self['square'].lower()[0]=='t'
+        titlefont = dict(family='Times New Roman', size=60)
+        font = dict(family='Times New Roman', size=25)
+        if square: width, height = 800,600
+        else: width, height = None, None
+        if frame:
+            return Layout(title = dict(text=self['title'],xref='paper'),margin=dict(l = 100,t=80),titlefont=titlefont,font = font,width = width, height = height,
+                        xaxis = dict(title = self['xlab'],tickprefix=" ", titlefont = titlefont,tickfont = font,mirror = True,ticks='outside',showline=True,linewidth=4),
+                        yaxis = dict(title = self['ylab'],tickprefix=" ", titlefont = titlefont,tickfont = font, mirror = True,ticks='outside',showline=True,linewidth=4),
+                        legend=dict(y=0.5,x=1.02,xanchor='left',yanchor='middle',orientation="v",bgcolor='rgba(0,0,0,0)'))
+        else:
+            return Layout(title = self['title'], width = width, height = height,font=dict(family='Courier New, monospace', size=30),
+                        xaxis = dict(title = self['xlab']),
+                        yaxis = dict(title = self['ylab']))
+
 
     @abstractmethod
     def _init(self, funcs : Dict[str,C]) -> None:
@@ -134,8 +145,8 @@ class Plot(object):
     @abstractmethod
     def kw(self) -> Set[str]:
         '''List of valid keyword arguments'''
-        return {'query','title','xlab',
-                'xcols','xfunc','lcols','lfunc','gcols','gfunc','glfunc'}
+        return {'query','title','xlab','frame','square',
+                'xcols','xfunc','lcols','lfunc','gcols','gfunc'}
 
     #------------------------#
     # Static / Class methods #
@@ -356,7 +367,7 @@ class BarPlot(Plot):
 
     @property
     def kw(self)->Set[str]:
-        return super().kw | {'aggfunc','spcols','spfunc'}
+        return super().kw | {'aggfunc','spcols','spfunc','ylab'}
 
 
 ################################################################################
